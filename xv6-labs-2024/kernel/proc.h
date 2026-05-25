@@ -95,12 +95,15 @@ struct proc {
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process
 
+  // --- VÙNG QUẢN LÝ BẢNG PHÂN TRANG & NGẮT ---
+  struct trapframe *trapframe; // data page for trampoline.S (CHỈ GIỮ LẠI 1 DÒNG NÀY)
+  struct usyscall *usyscall;   // Giữ dòng này ở ĐÂY để con trỏ nằm ĐÚNG TRONG struct proc
+  struct context context;      // swtch() here to run process (CHỈ GIỮ LẠI 1 DÒNG NÀY)
+
   // these are private to the process, so p->lock need not be held.
   uint64 kstack;               // Virtual address of kernel stack
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
-  struct trapframe *trapframe; // data page for trampoline.S
-  struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)

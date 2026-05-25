@@ -1,10 +1,12 @@
 #include "param.h"
 #include "types.h"
+#include "riscv.h"
 #include "memlayout.h"
 #include "elf.h"
-#include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -298,8 +300,11 @@ freewalk(pagetable_t pagetable)
 void
 uvmfree(pagetable_t pagetable, uint64 sz)
 {
-  if(sz > 0)
-    uvmunmap(pagetable, 0, PGROUNDUP(sz)/PGSIZE, 1);
+  if(sz > USYSCALL) {
+    sz = USYSCALL;
+  }
+  
+  uvmunmap(pagetable, 0, PGROUNDUP(sz) / PGSIZE, 1);
   freewalk(pagetable);
 }
 
@@ -327,10 +332,15 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((mem = kalloc()) == 0)
       goto err;
     memmove(mem, (char*)pa, PGSIZE);
+    if(i == TRAPFRAME || i == USYSCALL)
+      continue;
+    if((pte = walk(old, i, 0)) == 0)
+      panic("uvmcopy: pte should exist");
     if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
       kfree(mem);
-      goto err;
+      goto err; 
     }
+    
   }
   return 0;
 
@@ -449,3 +459,36 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+void vmprint_rec(pagetable_t pagetable, int depth);
+void
+vmprint(pagetable_t pagetable)
+{
+    printf("page table %p\n", pagetable);
+    vmprint_rec(pagetable, 0);
+}
+void
+vmprint_rec(pagetable_t pagetable, int depth)
+{
+    for(int i = 0; i < 512; i++){
+        pte_t pte = pagetable[i];
+
+        // chỉ in entry có dữ liệu
+        if(pte & PTE_V){
+
+            // in dấu ".."
+            for(int j = 0; j < depth; j++){
+                printf(" ..");
+            }
+
+            uint64 pa = PTE2PA(pte);
+
+            printf("%d: pte %p pa %p\n", i, (void*)pte, (void*)pa);
+
+            // nếu KHÔNG phải leaf → đi xuống dưới
+            if((pte & (PTE_R|PTE_W|PTE_X)) == 0){
+                vmprint_rec((pagetable_t)pa, depth + 1);
+            }
+        }
+    }
+}
+
