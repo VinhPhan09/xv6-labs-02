@@ -1,10 +1,12 @@
 #include "param.h"
 #include "types.h"
+#include "riscv.h"
 #include "memlayout.h"
 #include "elf.h"
-#include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -298,8 +300,11 @@ freewalk(pagetable_t pagetable)
 void
 uvmfree(pagetable_t pagetable, uint64 sz)
 {
-  if(sz > 0)
-    uvmunmap(pagetable, 0, PGROUNDUP(sz)/PGSIZE, 1);
+  if(sz > USYSCALL) {
+    sz = USYSCALL;
+  }
+  
+  uvmunmap(pagetable, 0, PGROUNDUP(sz) / PGSIZE, 1);
   freewalk(pagetable);
 }
 
@@ -327,10 +332,15 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((mem = kalloc()) == 0)
       goto err;
     memmove(mem, (char*)pa, PGSIZE);
+    if(i == TRAPFRAME || i == USYSCALL)
+      continue;
+    if((pte = walk(old, i, 0)) == 0)
+      panic("uvmcopy: pte should exist");
     if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
       kfree(mem);
-      goto err;
+      goto err; 
     }
+    
   }
   return 0;
 

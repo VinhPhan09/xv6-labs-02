@@ -1,3 +1,8 @@
+#include "kernel/types.h"
+#include "kernel/param.h"
+
+#include "kernel/usyscall.h"
+#include "kernel/memlayout.h"
 struct stat;
 
 // system calls
@@ -41,3 +46,11 @@ void *memcpy(void *, const void *, uint);
 // umalloc.c
 void* malloc(uint);
 void free(void*);
+int pgaccess(void *va, int npages, unsigned int *mask);
+static inline int
+ugetpid(void)
+{
+  // Sử dụng trực tiếp địa chỉ ảo cố định của USYSCALL ở User Space
+  struct usyscall *u = (struct usyscall *)USYSCALL;
+  return u->pid;
+}
