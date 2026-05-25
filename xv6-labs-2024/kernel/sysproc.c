@@ -99,8 +99,6 @@ sys_pgaccess(void)
     uint64 addr;
 
     struct proc *p = myproc();
-
-    // ✅ lấy argument (KHÔNG check <0)
     argaddr(0, &va);
     argint(1, &npages);
     argaddr(2, &addr);
@@ -112,7 +110,7 @@ sys_pgaccess(void)
 
         if(pte && (*pte & PTE_V) && (*pte & PTE_A)){
             mask |= (1 << i);
-            *pte &= ~PTE_A;   // reset bit accessed
+            *pte &= ~PTE_A;   
         }
     }
 
@@ -121,5 +119,6 @@ sys_pgaccess(void)
 
     return 0;
 }
+
 
 
