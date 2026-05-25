@@ -475,7 +475,7 @@ vmprint_rec(pagetable_t pagetable, int depth)
         // chỉ in entry có dữ liệu
         if(pte & PTE_V){
 
-            // in dấu ".."
+            
             for(int j = 0; j < depth; j++){
                 printf(" ..");
             }
